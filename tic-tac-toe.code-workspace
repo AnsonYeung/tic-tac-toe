@@ -10,8 +10,14 @@
 			"oderwat.indent-rainbow",
 			"sirtori.indenticator",
 			"robertohuertasm.vscode-icons",
-			"ansonyeung.pascal-language-basics"
+			"ansonyeung.pascal-language-basics",
+			"formulahendry.code-runner"
 		]
 	}, 
-	"settings": {}
+	"settings": {
+		"code-runner.executorMap": {
+			"pascal": "$driveLetter && cd $dir && type nul >> console.ppu >> board.ppu && rm console.ppu && rm board.ppu && fpc tic-tac-toe.pas && start tic-tac-toe"
+		},
+		"code-runner.saveAllFilesBeforeRun": true
+	}
 }
