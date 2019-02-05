@@ -21,7 +21,7 @@ onFocus: EFocus;
 onMenu: EMenu;
 menuOptions: Array[1..3] Of String;
 menuSelected: 1..3;
-Width, Height: Integer;
+Width, Height, RequiredRow: Integer;
 gameBoard: TBoard;
 boxSelected: Coord;
 currentPlayer: Integer;
@@ -179,52 +179,91 @@ Begin
 	onMenu := @Noop;
 End;
 
-Procedure GameSelection();
+Procedure DrawBoxSelected(hover: Boolean);
 Begin
+	DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], hover);
+End;
+
+Procedure GameChangeSelection(Const X: Integer; Const Y: Integer);
+Begin
+	If (boxSelected.X <> X) Or (boxSelected.Y <> Y) Then
+	Begin
+		SetConsoleBuffer(Width * BoxWidth + 1, Height * BoxHeight);
+		DrawBoxSelected(False);
+		boxSelected.X := X;
+		boxSelected.Y := Y;
+		DrawBoxSelected(True);
+		SetConsoleBuffer(Width * BoxWidth, Height * BoxHeight);
+	End;
+End;
+
+Procedure GameSelection();
+Var
+i, j, num: Integer;
+cnts: Array[1..4] Of Integer;
+tmpSelected: Coord;
+draw: Boolean;
+leaving: Boolean;
+Begin
+	leaving := False;
 	gameBoard[boxSelected.X][boxSelected.Y] := currentPlayer;
-	SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-	DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], True);
-	SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-	currentPlayer := -currentPlayer;
-	{Check Win by boxSelected and currentPlayer}
-	{
-		If ??? Then
+	For i := 1 To 4 Do
+		cnts[i] := -1;
+	{ Method: Count in 8 directions from boxSelected }
+	For i := -1 To 1 Do
+		For j := -1 To 1 Do
+		Begin
+			If (i <> 0) Or (j <> 0) Then
+			Begin
+				tmpSelected := boxSelected;
+				num := Abs(i * 3 + j);
+				While gameBoard[tmpSelected.X][tmpSelected.Y] = currentPlayer Do
+				Begin
+					tmpSelected.X := tmpSelected.X + i;
+					tmpSelected.Y := tmpSelected.Y + j;
+					Inc(cnts[num]);
+					If Not (tmpSelected.X In [0..Width - 1]) Or Not (tmpSelected.Y In [0..Height - 1]) Then
+						Break;
+				End;
+			End;
+		End;
+	For i := 1 To 4 Do
+		If cnts[i] >= RequiredRow Then
+		Begin
 			EnterMenu();
-	}
+			leaving := True;
+		End;
+	draw := True;
+	For i := 0 To Width - 1 Do
+		For j := 0 To Height - 1 Do
+			If gameBoard[i][j] = 0 Then
+				draw := False;
+	If draw Then
+	Begin
+		EnterMenu();
+		leaving := True;
+	End;
+	{ Redraw the selection to red }
+	If Not leaving Then
+	Begin
+		i := boxSelected.X;
+		If boxSelected.X = 0 Then
+			boxSelected.X := 1
+		Else
+			boxSelected.X := 0;
+		GameChangeSelection(i, boxSelected.Y);
+		currentPlayer := -currentPlayer;
+	End;
 End;
 
 Procedure GameEvent(Const event: KEY_EVENT_RECORD);
 Begin
 	If event.bKeyDown Then
 	Case event.wVirtualKeyCode Of
-		VK_UP: Begin
-			SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], False);
-			boxSelected.Y := (boxSelected.Y - 1 + Height) Mod Height;
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], True);
-			SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-		End;
-		VK_DOWN: Begin
-			SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], False);
-			boxSelected.Y := (boxSelected.Y + 1) Mod Height;
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], True);
-			SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-		End;
-		VK_LEFT: Begin
-			SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], False);
-			boxSelected.X := (boxSelected.X - 1 + Width) Mod Width;
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], True);
-			SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-		End;
-		VK_RIGHT: Begin
-			SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], False);
-			boxSelected.X := (boxSelected.X + 1) Mod Width;
-			DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], True);
-			SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-		End;
+		VK_UP: GameChangeSelection(boxSelected.X, (boxSelected.Y - 1 + Height) Mod Height);
+		VK_DOWN: GameChangeSelection(boxSelected.X, (boxSelected.Y + 1) Mod Height);
+		VK_LEFT: GameChangeSelection((boxSelected.X - 1 + Width) Mod Width, boxSelected.Y);
+		VK_RIGHT: GameChangeSelection((boxSelected.X + 1) Mod Width, boxSelected.Y);
 	End
 	Else
 	Case event.wVirtualKeyCode Of
@@ -236,6 +275,7 @@ Procedure GameEvent(Const event: MOUSE_EVENT_RECORD);
 Var
 i, j, hoverX, hoverY: Integer;
 Begin
+	{ Mouse released }
 	If event.dwButtonState = 0 Then
 	Begin
 		hoverX := -1;
@@ -252,14 +292,7 @@ Begin
 			0: GameSelection();
 			MOUSE_MOVED:
 			If (boxSelected.X <> hoverX) Or (boxSelected.Y <> hoverY) Then
-			Begin
-				SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-				DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], False);
-				DrawBox(hoverX, hoverY, gameBoard[hoverX][hoverY], True);
-				SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-				boxSelected.X := hoverX;
-				boxSelected.Y := hoverY;
-			End;
+				GameChangeSelection(hoverX, hoverY);
 		End;
 	End;
 End;
@@ -272,13 +305,13 @@ Begin
 	onFocus := @Noop;
 	onMenu := @Noop;
 	gameBoard := InitBoard(Width, Height);
-	boxSelected.X := 0;
+	boxSelected.X := 1;
 	boxSelected.Y := 0;
 	currentPlayer := 1;
-	SetConsoleSize(Width * BoxWidth + 1, Height * BoxHeight);
-	DrawBoard(gameBoard);
-	DrawBox(0, 0, 0, True);
 	SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
+	SetConsoleBuffer(Width * BoxWidth + 1, Height * BoxHeight);
+	DrawBoard(gameBoard);
+	GameChangeSelection(0, 0);
 End;
 
 Begin
@@ -292,6 +325,7 @@ Begin
 	menuOptions[3] := 'Exit';
 	Width := 3;
 	Height := 3;
+	RequiredRow := 3;
 	EnterMenu();
 	{ Infinite Event Loop }
 	While True Do

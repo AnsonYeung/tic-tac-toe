@@ -22,6 +22,7 @@ White: Integer = 15;
 
 Procedure InitConsole();
 Procedure SetConsoleSize(Const Width: Integer; Const Height: Integer);
+Procedure SetConsoleBuffer(Const Width: Integer; Const Height: Integer);
 Procedure PollConsoleInput(Var irInBuf: Array Of INPUT_RECORD; Const bufSize: DWord; Var cNumRead: DWord);
 Procedure ClrScr();
 Procedure SetConsoleColor(Const color: Word);
@@ -35,12 +36,12 @@ Var
 hStdin: Handle;
 hStdout: Handle;
 fdwSaveOldMode: DWord;
-CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 
 Procedure InitConsole();
 Var
 fdwMode: DWord;
 cursorInfo: CONSOLE_CURSOR_INFO;
+FontInfo: CONSOLE_FONT_INFOEX;
 Begin
 	SetConsoleOutputCP(437);
 	hStdin := GetStdHandle(STD_INPUT_HANDLE);
@@ -51,6 +52,12 @@ Begin
 	cursorInfo.bVisible := False;
 	cursorInfo.dwSize := 100;
 	SetConsoleCursorInfo(hStdout, cursorInfo);
+	FontInfo.cbSize := sizeof(CONSOLE_FONT_INFOEX);
+	GetCurrentConsoleFontEx(hStdout, False, @FontInfo);
+	FontInfo.FaceName := 'Lucida Consoles';
+	FontInfo.dwFontSize.X := 8;
+	FontInfo.dwFontSize.Y := 16;
+	SetCurrentConsoleFontEx(hStdout, False, @FontInfo);
 	TextBackground(Black);
 	TextColor(White);
 	ClrScr();
@@ -58,21 +65,27 @@ End;
 
 Procedure SetConsoleSize(Const Width: Integer; Const Height: Integer);
 Var
-BufferSize: Coord;
 ConsoleSize: SMALL_RECT;
+CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 Begin
 	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
-	{ Set a buffer size bigger than the console size }
-	BufferSize.X := Max(CurrentInfo.dwSize.X, Width);
-	BufferSize.Y := Max(CurrentInfo.dwSize.Y, Height);
-	SetConsoleScreenBufferSize(hStdout, BufferSize);
-	{ Then safely set the console size }
+	{ Set a buffer size bigger than the console size, this nearly guarantees the success of setting console size }
+	SetConsoleBuffer(Max(CurrentInfo.dwSize.X, Width), Max(CurrentInfo.dwSize.Y, Height));
+	{ Then safely set the console size, will fail if the screen is too small }
 	ConsoleSize.Top := 0;
 	ConsoleSize.Left := 0;
 	ConsoleSize.Right := Width - 1;
 	ConsoleSize.Bottom := Height - 1;
 	SetConsoleWindowInfo(hStdout, True, ConsoleSize);
 	{ Set the buffer size to be equal to the console size }
+	SetConsoleBuffer(Width, Height);
+End;
+
+Procedure SetConsoleBuffer(Const Width: Integer; Const Height: Integer);
+Var
+BufferSize: Coord;
+Begin
+	{ Set the buffer size directly, this fails if the buffer size is too small }
 	BufferSize.X := Width;
 	BufferSize.Y := Height;
 	SetConsoleScreenBufferSize(hStdout, BufferSize);
@@ -87,6 +100,7 @@ Procedure ClrScr();
 Var
 screen: Coord;
 cCharsWritten: DWord;
+CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 Begin
 	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
 	screen.X := 0;
@@ -102,12 +116,16 @@ Begin
 End;
 
 Procedure TextBackground(Const color: Integer);
+Var
+CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 Begin
 	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
 	SetConsoleColor(CurrentInfo.wAttributes And 15 + color * 16);
 End;
 
 Procedure TextColor(Const color: Integer);
+Var
+CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 Begin
 	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
 	SetConsoleColor(CurrentInfo.wAttributes And 240 + color);
