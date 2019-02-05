@@ -16,7 +16,7 @@
 	}, 
 	"settings": {
 		"code-runner.executorMap": {
-			"pascal": "$driveLetter && cd $dir && type nul >> console.ppu && type nul >> board.ppu && rm console.ppu && rm board.ppu && fpc tic-tac-toe.pas && start tic-tac-toe"
+			"pascal": "$driveLetter && cd $dir && type nul >> temp.ppu && rm *.ppu && fpc tic-tac-toe.pas && start tic-tac-toe"
 		},
 		"code-runner.saveAllFilesBeforeRun": true
 	}
