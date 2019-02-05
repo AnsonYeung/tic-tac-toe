@@ -29,6 +29,7 @@ Procedure SetConsoleColor(Const color: Word);
 Procedure TextBackground(Const color: Integer);
 Procedure TextColor(Const color: Integer);
 Procedure GoToXY(Const X: Integer; Const Y: Integer);
+Procedure WriteDup(Const X: Integer; Const Y: Integer; Const c: PChar; Const n: Integer);
 Procedure RestoreConsole();
 
 Implementation
@@ -138,6 +139,24 @@ Begin
 	Loc.X := X;
 	Loc.Y := Y;
 	SetConsoleCursorPosition(hStdout, Loc);
+End;
+
+Procedure WriteDup(Const X: Integer; Const Y: Integer; Const c: PChar; Const n: Integer);
+Var
+Loc: Coord;
+written: DWord;
+CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
+Attributes: Array Of Word;
+i: Integer;
+Begin
+	Loc.X := X;
+	Loc.Y := Y;
+	WriteConsoleOutputCharacter(hStdout, c, n, Loc, written);
+	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
+	SetLength(Attributes, n);
+	For i := 0 To n - 1 Do
+		Attributes[i] := CurrentInfo.wAttributes;
+	WriteConsoleOutputAttribute(hStdout, @Attributes[0], n, Loc, written);
 End;
 
 Procedure RestoreConsole();

@@ -30,9 +30,20 @@ Begin
 	InitBoard := gameBoard;
 End;
 
+Function CharDup(c: Char; n: Integer): PChar;
+Var
+str: AnsiString;
+i: Integer;
+Begin
+	str := '';
+	For i := 1 To n Do
+		str := str + c;
+	CharDup := PChar(str);
+End;
+
 Procedure DrawBox(x, y: Integer; state: BoxState; hover: Boolean);
 Var
-i, j: Integer;
+i: Integer;
 Begin
 	TextColor(Black);
 	If hover Then
@@ -46,11 +57,7 @@ Begin
 		Else
 			TextBackground(White);
 	For i := 0 To BoxHeight - 1 Do
-	Begin
-		GoToXY(x * BoxWidth, y * BoxHeight + i);
-		For j := 0 To BoxWidth - 1 Do
-			Write(' ');
-	End;
+		WriteDup(x * BoxWidth, y * BoxHeight + i, CharDup(' ', BoxWidth), BoxWidth);
 	GoToXY(x * BoxWidth + BoxWidth div 2, y * BoxHeight + BoxHeight div 2);
 	If state = 1 Then
 		Write('O')

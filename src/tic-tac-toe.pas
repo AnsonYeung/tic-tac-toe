@@ -188,12 +188,10 @@ Procedure GameChangeSelection(Const X: Integer; Const Y: Integer);
 Begin
 	If (boxSelected.X <> X) Or (boxSelected.Y <> Y) Then
 	Begin
-		SetConsoleBuffer(Width * BoxWidth + 1, Height * BoxHeight);
 		DrawBoxSelected(False);
 		boxSelected.X := X;
 		boxSelected.Y := Y;
 		DrawBoxSelected(True);
-		SetConsoleBuffer(Width * BoxWidth, Height * BoxHeight);
 	End;
 End;
 
@@ -205,54 +203,65 @@ tmpSelected: Coord;
 draw: Boolean;
 leaving: Boolean;
 Begin
-	leaving := False;
-	gameBoard[boxSelected.X][boxSelected.Y] := currentPlayer;
-	For i := 1 To 4 Do
-		cnts[i] := -1;
-	{ Method: Count in 8 directions from boxSelected }
-	For i := -1 To 1 Do
-		For j := -1 To 1 Do
-		Begin
-			If (i <> 0) Or (j <> 0) Then
+	If gameBoard[boxSelected.X][boxSelected.Y] = 0 Then
+	Begin
+		leaving := False;
+		gameBoard[boxSelected.X][boxSelected.Y] := currentPlayer;
+		For i := 1 To 4 Do
+			cnts[i] := -1;
+		{ Method: Count in 8 directions from boxSelected }
+		For i := -1 To 1 Do
+			For j := -1 To 1 Do
 			Begin
-				tmpSelected := boxSelected;
-				num := Abs(i * 3 + j);
-				While gameBoard[tmpSelected.X][tmpSelected.Y] = currentPlayer Do
+				If (i <> 0) Or (j <> 0) Then
 				Begin
-					tmpSelected.X := tmpSelected.X + i;
-					tmpSelected.Y := tmpSelected.Y + j;
-					Inc(cnts[num]);
-					If Not (tmpSelected.X In [0..Width - 1]) Or Not (tmpSelected.Y In [0..Height - 1]) Then
-						Break;
+					tmpSelected := boxSelected;
+					num := Abs(i * 3 + j);
+					While gameBoard[tmpSelected.X][tmpSelected.Y] = currentPlayer Do
+					Begin
+						tmpSelected.X := tmpSelected.X + i;
+						tmpSelected.Y := tmpSelected.Y + j;
+						Inc(cnts[num]);
+						If Not (tmpSelected.X In [0..Width - 1]) Or Not (tmpSelected.Y In [0..Height - 1]) Then
+							Break;
+					End;
 				End;
 			End;
-		End;
-	For i := 1 To 4 Do
-		If cnts[i] >= RequiredRow Then
+		For i := 1 To 4 Do
+			If cnts[i] >= RequiredRow Then
+			Begin
+				ClrScr();
+				If currentPlayer = -1 Then Write('X')
+				Else Write('O');
+				Write(' wins!');
+				Sleep(1000);
+				EnterMenu();
+				leaving := True;
+			End;
+		draw := True;
+		For i := 0 To Width - 1 Do
+			For j := 0 To Height - 1 Do
+				If gameBoard[i][j] = 0 Then
+					draw := False;
+		If draw Then
 		Begin
+			ClrScr();
+			Write('Draw...');
+			Sleep(1000);
 			EnterMenu();
 			leaving := True;
 		End;
-	draw := True;
-	For i := 0 To Width - 1 Do
-		For j := 0 To Height - 1 Do
-			If gameBoard[i][j] = 0 Then
-				draw := False;
-	If draw Then
-	Begin
-		EnterMenu();
-		leaving := True;
-	End;
-	{ Redraw the selection to red }
-	If Not leaving Then
-	Begin
-		i := boxSelected.X;
-		If boxSelected.X = 0 Then
-			boxSelected.X := 1
-		Else
-			boxSelected.X := 0;
-		GameChangeSelection(i, boxSelected.Y);
-		currentPlayer := -currentPlayer;
+		{ Redraw the selection to red }
+		If Not leaving Then
+		Begin
+			i := boxSelected.X;
+			If boxSelected.X = 0 Then
+				boxSelected.X := 1
+			Else
+				boxSelected.X := 0;
+			GameChangeSelection(i, boxSelected.Y);
+			currentPlayer := -currentPlayer;
+		End;
 	End;
 End;
 
@@ -309,7 +318,6 @@ Begin
 	boxSelected.Y := 0;
 	currentPlayer := 1;
 	SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
-	SetConsoleBuffer(Width * BoxWidth + 1, Height * BoxHeight);
 	DrawBoard(gameBoard);
 	GameChangeSelection(0, 0);
 End;
@@ -323,15 +331,15 @@ Begin
 	menuOptions[1] := 'Play';
 	menuOptions[2] := 'Options';
 	menuOptions[3] := 'Exit';
-	Width := 3;
-	Height := 3;
-	RequiredRow := 3;
+	Width := 19;
+	Height := 19;
+	RequiredRow := 5;
 	EnterMenu();
 	{ Infinite Event Loop }
 	While True Do
 	Begin
 		PollConsoleInput(irInBuf, 128, cNumRead);
-		For i := 0 To 127 Do
+		For i := 0 To cNumRead Do
 		Case irInBuf[i].EventType Of
 			KEY_EVENT: onKey(irInBuf[i].Event.KeyEvent);
 			2: onMouse(irInBuf[i].Event.MouseEvent);
