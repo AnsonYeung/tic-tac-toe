@@ -1,4 +1,4 @@
-Unit Console;
+﻿Unit Console;
 Interface
 Uses Windows, Math;
 
