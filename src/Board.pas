@@ -1,6 +1,5 @@
 Unit Board;
 Interface
-Uses MyCrt;
 Const
 BoxWidth: Integer = 5;
 BoxHeight: Integer = 3;
@@ -9,11 +8,13 @@ BoxState = -1..1;
 TBoard = Array Of Array Of BoxState;
 
 Function InitBoard(Width: Integer; Height: Integer): TBoard;
-Procedure DrawBox(x, y: Integer; state: BoxState; hover: Boolean);
 Procedure DrawBoard(Const gameBoard: TBoard);
 Function MouseInBox(mousePosX, mousePosY, x, y: Integer): Boolean;
+Procedure DrawBoxBackground(x, y: Integer; state: BoxState; hover: Boolean);
+Procedure DrawBoxContent(x, y: Integer; state: BoxState);
 
 Implementation
+Uses MyCrt;
 
 Function InitBoard(Width: Integer; Height: Integer): TBoard;
 Var
@@ -30,18 +31,7 @@ Begin
 	InitBoard := gameBoard;
 End;
 
-Function CharDup(c: Char; n: Integer): PChar;
-Var
-str: AnsiString;
-i: Integer;
-Begin
-	str := '';
-	For i := 1 To n Do
-		str := str + c;
-	CharDup := PChar(str);
-End;
-
-Procedure DrawBox(x, y: Integer; state: BoxState; hover: Boolean);
+Procedure DrawBoxBackground(x, y: Integer; state: BoxState; hover: Boolean);
 Var
 i: Integer;
 Begin
@@ -57,7 +47,11 @@ Begin
 		Else
 			TextBackground(White);
 	For i := 0 To BoxHeight - 1 Do
-		WriteDup(x * BoxWidth, y * BoxHeight + i, CharDup(' ', BoxWidth), BoxWidth);
+		WriteDupAttr(x * BoxWidth, y * BoxHeight + i, BoxWidth);
+End;
+
+Procedure DrawBoxContent(x, y: Integer; state: BoxState);
+Begin
 	GoToXY(x * BoxWidth + BoxWidth div 2, y * BoxHeight + BoxHeight div 2);
 	If state = 1 Then
 		Write('O')
@@ -74,7 +68,7 @@ Begin
 	Begin
 		column := gameBoard[i];
 		For j := Low(column) To High(column) Do
-			DrawBox(i, j, column[j], False);
+			DrawBoxBackground(i, j, column[j], False);
 	End;
 End;
 

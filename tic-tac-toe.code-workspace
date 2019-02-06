@@ -16,8 +16,9 @@
 	}, 
 	"settings": {
 		"code-runner.executorMap": {
-			"pascal": "$driveLetter && cd $dir && type nul >> temp.ppu && rm *.ppu && fpc tic-tac-toe.pas && start tic-tac-toe"
+			"pascal": "C: && cd \\Users\\secur\\GitHub\\tic-tac-toe\\src && type nul >> temp.ppu && rm *.ppu && fpc -dDEBUG tic-tac-toe.pas && start tic-tac-toe"
 		},
-		"code-runner.saveAllFilesBeforeRun": true
+		"code-runner.saveAllFilesBeforeRun": true,
+		"code-runner.defaultLanguage": "pascal"
 	}
 }

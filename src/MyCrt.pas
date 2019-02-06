@@ -19,7 +19,14 @@ LightAqua: Integer = 11;
 LightPurple: Integer = 13;
 LightYellow: Integer = 14;
 White: Integer = 15;
+v : Char = #186;
+h : Char = #205;
+cul : Char = #201;
+cur : Char = #187;
+cll : Char = #200;
+clr : Char = #188;
 
+Function StrDup(Const str: String; Const cnt: Integer): String;
 Procedure InitConsole();
 Procedure SetConsoleSize(Const Width: Integer; Const Height: Integer);
 Procedure SetConsoleBuffer(Const Width: Integer; Const Height: Integer);
@@ -30,6 +37,9 @@ Procedure TextBackground(Const color: Integer);
 Procedure TextColor(Const color: Integer);
 Procedure GoToXY(Const X: Integer; Const Y: Integer);
 Procedure WriteDup(Const X: Integer; Const Y: Integer; Const c: PChar; Const n: Integer);
+Procedure WriteDupAttr(Const X: Integer; Const Y: Integer; Const n: Integer);
+Procedure CursorOff();
+Procedure CursorOn();
 Procedure RestoreConsole();
 
 Implementation
@@ -38,24 +48,29 @@ hStdin: Handle;
 hStdout: Handle;
 fdwSaveOldMode: DWord;
 
+Function StrDup(Const str: String; Const cnt: Integer): String;
+Var
+result: String;
+i: Integer;
+Begin
+	result := '';
+	For i := 1 To cnt Do
+		result := result + str;
+	StrDup := result;
+End;
+
 Procedure InitConsole();
 Var
 fdwMode: DWord;
-cursorInfo: CONSOLE_CURSOR_INFO;
 FontInfo: CONSOLE_FONT_INFOEX;
 Begin
-	SetConsoleOutputCP(437);
-	hStdin := GetStdHandle(STD_INPUT_HANDLE);
-	hStdout := GetStdHandle(STD_OUTPUT_HANDLE);
 	GetConsoleMode(hStdin, @fdwSaveOldMode);
-	fdwMode := ENABLE_WINDOW_INPUT or ENABLE_MOUSE_INPUT;
+	fdwMode := ENABLE_WINDOW_INPUT Or ENABLE_MOUSE_INPUT Or ENABLE_EXTENDED_FLAGS Or ENABLE_ECHO_INPUT Or ENABLE_LINE_INPUT Or ENABLE_INSERT_MODE;
 	SetConsoleMode(hStdin, fdwMode);
-	cursorInfo.bVisible := False;
-	cursorInfo.dwSize := 100;
-	SetConsoleCursorInfo(hStdout, cursorInfo);
+	CursorOff();
 	FontInfo.cbSize := sizeof(CONSOLE_FONT_INFOEX);
 	GetCurrentConsoleFontEx(hStdout, False, @FontInfo);
-	FontInfo.FaceName := 'Lucida Consoles';
+	FontInfo.FaceName := 'Lucida Console';
 	FontInfo.dwFontSize.X := 8;
 	FontInfo.dwFontSize.Y := 16;
 	SetCurrentConsoleFontEx(hStdout, False, @FontInfo);
@@ -145,13 +160,23 @@ Procedure WriteDup(Const X: Integer; Const Y: Integer; Const c: PChar; Const n: 
 Var
 Loc: Coord;
 written: DWord;
+Begin
+	Loc.X := X;
+	Loc.Y := Y;
+	WriteConsoleOutputCharacter(hStdout, c, n, Loc, written);
+	WriteDupAttr(X, Y, n);
+End;
+
+Procedure WriteDupAttr(Const X: Integer; Const Y: Integer; Const n: Integer);
+Var
+Loc: Coord;
+written: DWord;
 CurrentInfo: CONSOLE_SCREEN_BUFFER_INFO;
 Attributes: Array Of Word;
 i: Integer;
 Begin
 	Loc.X := X;
 	Loc.Y := Y;
-	WriteConsoleOutputCharacter(hStdout, c, n, Loc, written);
 	GetConsoleScreenBufferInfo(hStdout, @CurrentInfo);
 	SetLength(Attributes, n);
 	For i := 0 To n - 1 Do
@@ -159,9 +184,34 @@ Begin
 	WriteConsoleOutputAttribute(hStdout, @Attributes[0], n, Loc, written);
 End;
 
+Procedure CursorOff();
+Var
+cursorInfo: CONSOLE_CURSOR_INFO;
+Begin
+	cursorInfo.bVisible := False;
+	cursorInfo.dwSize := 100;
+	SetConsoleCursorInfo(hStdout, cursorInfo);
+End;
+
+Procedure CursorOn();
+Var
+cursorInfo: CONSOLE_CURSOR_INFO;
+Begin
+	cursorInfo.bVisible := True;
+	cursorInfo.dwSize := 100;
+	SetConsoleCursorInfo(hStdout, cursorInfo);
+End;
+
 Procedure RestoreConsole();
 Begin
 	SetConsoleMode(hStdin, fdwSaveOldMode);
 End;
 
+Initialization
+	SetConsoleOutputCP(437);
+	hStdin := GetStdHandle(STD_INPUT_HANDLE);
+	hStdout := GetStdHandle(STD_OUTPUT_HANDLE);
+	InitConsole();
+Finalization
+	RestoreConsole();
 End.

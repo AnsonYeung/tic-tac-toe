@@ -1,8 +1,5 @@
 Program TicTacToe;
-Uses Windows, MyCrt, Board;
-Const
-WinWidth: Integer = 150;
-MenuOptionCount: Integer = 3;
+Uses SysUtils, Windows, MyCrt, Board, Menu;
 Type
 EKey = Procedure (Const event: KEY_EVENT_RECORD);
 EMouse = Procedure (Const event: MOUSE_EVENT_RECORD);
@@ -19,42 +16,54 @@ onMouse: EMouse;
 onWinBufferSize: EWinBufferSize;
 onFocus: EFocus;
 onMenu: EMenu;
-menuOptions: Array[1..3] Of String;
-menuSelected: 1..3;
+menuOptions: Array Of String;
+configOptions: Array Of String;
 Width, Height, RequiredRow: Integer;
 gameBoard: TBoard;
 boxSelected: Coord;
 currentPlayer: Integer;
+win, draw, lose: Integer;
 
 Procedure Noop(Const event: KEY_EVENT_RECORD); Begin End;
 Procedure Noop(Const event: MOUSE_EVENT_RECORD); Begin End;
 Procedure Noop(Const event: WINDOW_BUFFER_SIZE_RECORD); Begin End;
 Procedure Noop(Const event: FOCUS_EVENT_RECORD); Begin End;
-Procedure Noop(Const event: MENU_EVENT_RECORD); Begin End;
-
-Function StrDup(str: String; cnt: Integer): String;
-Var
-result: String;
-i: Integer;
-Begin
-	result := '';
-	For i := 1 To cnt Do
-		result := result + str;
-	StrDup := result;
+Procedure Noop(Const event: MENU_EVENT_RECORD); Begin
+{$IFNDEF FALLBACK}
+	SetConsoleSize(WinWidth, 45);
+	TextBackground(Black);
+	TextColor(White);
+	ClrScr();
+	onKey := @Noop;
+	onMouse := @Noop;
+	onWinBufferSize := @Noop;
+	onFocus := @Noop;
+	onMenu := @Noop;
+	Write('All settiings will be applied at runtime. Please don''t open the menu, closing the program');
+	ReadLn();
+	Halt(1);
+{$ENDIF}
 End;
 
-Procedure WriteCenter(str : String; ln : Integer);
+Procedure WriteCenter(Const str : String; Const ln : Integer);
 Begin
 	GoToXY((WinWidth - Length(str)) Div 2, ln);
 	Write(str);
 End;
 
-Procedure WriteFileCenter(filename: String);
+Procedure WriteFileCenter(Const filename: String);
 Var
 textFile: Text;
 i: Integer;
 str: String;
 Begin
+	If Not FileExists(filename) Then
+	Begin
+		ClrScr();
+		Write('The game file ' + filename + ' is missing, exiting');
+		ReadLn();
+		Halt(1);
+	End;
 	Assign(textFile, filename);
 	Reset(textFile);
 	i := -1;
@@ -67,121 +76,132 @@ Begin
 	Close(textFile);
 End;
 
-Procedure WriteButtonCenter(description: String; ln: Integer; hover: Boolean);
-Var len: Integer;
+Procedure LoadConfig(Const filename: String);
+Var
+c: Char;
+cfgFile: Text;
 Begin
-	If hover Then TextBackground(Yellow)
-	Else TextBackground(Blue);
-	len := Length(description);
-	WriteCenter(StrDup(' ', len + 6), ln);
-	WriteCenter('   ' + description + '   ', ln + 1);
-	WriteCenter(StrDup(' ', len + 6), ln + 2);
-	TextBackground(Black);
-End;
-
-Function CoordInCenteredButton(mousePos: Coord; descrLen: Integer; ln: Integer): Boolean;
-Begin
-	CoordInCenteredButton := (mousePos.X >= (WinWidth - descrLen) Div 2 - 3) And
-		(mousePos.X <= (WinWidth + descrLen) Div 2 + 2) And
-		(mousePos.Y >= ln) And
-		(mousePos.Y <= ln + 2);
-End;
-
-Procedure StopProgram();
-Begin
-	RestoreConsole();
-	Halt();
-End;
-
-Procedure WriteMenuButton(i: Integer; hover: Boolean);
-Begin
-	WriteButtonCenter(menuOptions[i], 15 + i * 5, hover);
-End;
-
-Procedure EnterMenu(); Forward;
-Procedure EnterGame(); Forward;
-
-Procedure MenuSelection();
-Begin
-	Case menuSelected Of
-		1: Begin
-			EnterGame();
-		End;
-		2: Begin
-			ClrScr();
-			WriteLn('Press any key to return to menu');
-			ReadLn();
-			EnterMenu();
-		End;
-		3: StopProgram();
-	End;
-End;
-
-Procedure MenuEvent(Const event: KEY_EVENT_RECORD);
-Begin
-	If event.bKeyDown Then
-	Case event.wVirtualKeyCode Of
-		VK_UP: Begin
-			WriteMenuButton(menuSelected, False);
-			menuSelected := ((menuSelected - 2 + MenuOptionCount) Mod MenuOptionCount) + 1;
-			WriteMenuButton(menuSelected, True);
-		End;
-		VK_DOWN: Begin
-			WriteMenuButton(menuSelected, False);
-			menuSelected := (menuSelected Mod MenuOptionCount) + 1;
-			WriteMenuButton(menuSelected, True);
-		End;
-	End
-	Else
-	Case event.wVirtualKeyCode Of
-		VK_RETURN: MenuSelection();
-	End;
-End;
-
-Procedure MenuEvent(Const event: MOUSE_EVENT_RECORD);
-Var button, i: Integer;
-Begin
-	If event.dwButtonState = 0 Then
+	If Not FileExists('config\' + filename) Then
 	Begin
-		button := 0;
-		For i := 1 To MenuOptionCount Do
-			If CoordInCenteredButton(event.dwMousePosition, Length(menuOptions[i]), 15 + i * 5) Then
-				button := i;
-		Case event.dwEventFlags Of
-			0: If button <> 0 Then MenuSelection();
-			MOUSE_MOVED:
-			If (button <> 0) And (menuSelected <> button) Then
-			Begin
-				WriteMenuButton(menuSelected, False);
-				WriteMenuButton(button, True);
-				menuSelected := button;
-			End;
-		End;
+		SetConsoleColor(Black * 16 + White);
+		ClrScr();
+		Write('Config file ' + filename + ' does not exists, exiting');
+		ReadLn();
+		Halt(1);
+	End;
+	Assign(cfgFile, 'config\' + filename);
+	Reset(cfgFile);
+	Read(cfgFile, c);
+	Width := Ord(c);
+	Read(cfgFile, c);
+	Height := Ord(c);
+	Read(cfgFile, c);
+	RequiredRow := Ord(c);
+	Close(cfgFile);
+	Assign(cfgFile, '.tic-tac-toe');
+	Rewrite(cfgFile);
+	WriteLn(cfgFile, Chr(win Div 256) + Chr(win Mod 256) + Chr(draw Div 256) + Chr(draw Mod 256) + Chr(lose Div 256) + Chr(lose Mod 256));
+	Write(cfgFile, filename);
+	Close(cfgFile);
+End;
+
+Procedure CreateConfig(Const filename: String; Const Width: Integer; Const Height: Integer; Const RequiredRow: Integer);
+Var
+cfgFile: Text;
+Begin
+	Assign(cfgFile, 'config\' + filename);
+	Rewrite(cfgFile);
+	Write(cfgFile, Chr(Width) + Chr(Height) + Chr(RequiredRow));
+	Close(cfgFile);
+End;
+
+Procedure ResetGame();
+Var
+textFile : Text;
+Begin
+	Width := 3;
+	Height := 3;
+	RequiredRow := 3;
+	win := 0;
+	draw := 0;
+	lose := 0;
+	Assign(textFile, '.tic-tac-toe');
+	Rewrite(textFile);
+	WriteLn(textFile, StrDup(Chr(0), 6));
+	Write(textFile, 'tic-tac-toe');
+	Close(textFile);
+	If Not DirectoryExists('config') Then
+		CreateDir('config');
+	CreateConfig('tic-tac-toe', 3, 3, 3);
+	CreateConfig('gomoku', 19, 19, 5);
+End;
+
+Procedure InitProgram();
+Var
+c1, c2: Char;
+filename: String;
+textFile : Text;
+Begin
+	SetLength(menuOptions, 4);
+	menuOptions[0] := 'Play';
+	menuOptions[1] := 'Options';
+	menuOptions[2] := 'Statistic';
+	menuOptions[3] := 'Exit';
+	SetLength(configOptions, 4);
+	configOptions[0] := 'Load config';
+	configOptions[1] := 'Create config';
+	configOptions[2] := 'Remove game data and reset all config';
+	configOptions[3] := 'Return to main menu';
+	If Not FileExists('.tic-tac-toe') Then
+		ResetGame()
+	Else
+	Begin
+		Assign(textFile, '.tic-tac-toe');
+		Reset(textFile);
+		Read(textFile, c1, c2);
+		win := Ord(c1) * 256 + Ord(c2);
+		Read(textFile, c1, c2);
+		draw := Ord(c1) * 256 + Ord(c2);
+		ReadLn(textFile, c1, c2);
+		lose := Ord(c1) * 256 + Ord(c2);
+		ReadLn(textFile, filename);
+		Close(textFile);
+		LoadConfig(filename);
 	End;
 End;
 
-Procedure EnterMenu();
+Procedure EnterMainMenu(); Forward;
+Procedure EnterGame(); Forward;
+Procedure EnterGameEnd(Const player: Integer); Forward;
+Procedure EnterConfig(); Forward;
+Procedure EnterStat(); Forward;
+
+Procedure MenuSelection(Const result: Integer);
+Begin
+	Case result Of
+		0: EnterGame();
+		1: EnterConfig();
+		2: EnterStat();
+		3: Halt(0);
+	End;
+End;
+
+Procedure EnterMainMenu();
 Begin
 	SetConsoleSize(WinWidth, 45);
 	TextBackground(Black);
 	TextColor(White);
 	ClrScr();
-	WriteFileCenter('scenes/menu_title.txt');
-	menuSelected := 1;
-	For i := 1 To MenuOptionCount Do
-	Begin
-		WriteMenuButton(i, menuSelected = i);
-	End;
-	onKey := @MenuEvent;
-	onMouse := @MenuEvent;
+	WriteFileCenter('scenes\menu_title.txt');
+	EnterMenu(onKey, onMouse, @MenuSelection, menuOptions);
 	onWinBufferSize := @Noop;
 	onFocus := @Noop;
 	onMenu := @Noop;
 End;
 
-Procedure DrawBoxSelected(hover: Boolean);
+Procedure DrawBoxSelected(Const hover: Boolean);
 Begin
-	DrawBox(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], hover);
+	DrawBoxBackground(boxSelected.X, boxSelected.Y, gameBoard[boxSelected.X][boxSelected.Y], hover);
 End;
 
 Procedure GameChangeSelection(Const X: Integer; Const Y: Integer);
@@ -195,65 +215,65 @@ Begin
 	End;
 End;
 
-Procedure GameSelection();
+Function CheckEnd(Const gameBoard: TBoard; Const boxSelected: Coord; Const currentPlayer: Integer): Boolean;
 Var
 i, j, num: Integer;
-cnts: Array[1..4] Of Integer;
 tmpSelected: Coord;
-draw: Boolean;
-leaving: Boolean;
+cnts: Array[1..4] Of Integer;
+result: Boolean;
 Begin
-	If gameBoard[boxSelected.X][boxSelected.Y] = 0 Then
-	Begin
-		leaving := False;
-		gameBoard[boxSelected.X][boxSelected.Y] := currentPlayer;
-		For i := 1 To 4 Do
-			cnts[i] := -1;
-		{ Method: Count in 8 directions from boxSelected }
-		For i := -1 To 1 Do
-			For j := -1 To 1 Do
+	result := False;
+	gameBoard[boxSelected.X][boxSelected.Y] := currentPlayer;
+	For i := 1 To 4 Do
+		cnts[i] := -1;
+	{ Method: Count in 8 directions from boxSelected }
+	For i := -1 To 1 Do
+		For j := -1 To 1 Do
+		Begin
+			If (i <> 0) Or (j <> 0) Then
 			Begin
-				If (i <> 0) Or (j <> 0) Then
+				tmpSelected := boxSelected;
+				num := Abs(i * 3 + j);
+				While gameBoard[tmpSelected.X][tmpSelected.Y] = currentPlayer Do
 				Begin
-					tmpSelected := boxSelected;
-					num := Abs(i * 3 + j);
-					While gameBoard[tmpSelected.X][tmpSelected.Y] = currentPlayer Do
-					Begin
-						tmpSelected.X := tmpSelected.X + i;
-						tmpSelected.Y := tmpSelected.Y + j;
-						Inc(cnts[num]);
-						If Not (tmpSelected.X In [0..Width - 1]) Or Not (tmpSelected.Y In [0..Height - 1]) Then
-							Break;
-					End;
+					tmpSelected.X := tmpSelected.X + i;
+					tmpSelected.Y := tmpSelected.Y + j;
+					Inc(cnts[num]);
+					If Not (tmpSelected.X In [0..Width - 1]) Or Not (tmpSelected.Y In [0..Height - 1]) Then
+						Break;
 				End;
 			End;
-		For i := 1 To 4 Do
-			If cnts[i] >= RequiredRow Then
-			Begin
-				ClrScr();
-				If currentPlayer = -1 Then Write('X')
-				Else Write('O');
-				Write(' wins!');
-				Sleep(1000);
-				EnterMenu();
-				leaving := True;
-			End;
-		draw := True;
+		End;
+	For i := 1 To 4 Do
+		If cnts[i] >= RequiredRow Then
+		Begin
+			If currentPlayer = -1 Then EnterGameEnd(currentPlayer)
+			Else EnterGameEnd(currentPlayer);
+			result := True;
+		End;
+	If Not result Then
+	Begin
+		result := True;
 		For i := 0 To Width - 1 Do
 			For j := 0 To Height - 1 Do
 				If gameBoard[i][j] = 0 Then
-					draw := False;
-		If draw Then
+					result := False;
+		If result Then
 		Begin
-			ClrScr();
-			Write('Draw...');
-			Sleep(1000);
-			EnterMenu();
-			leaving := True;
+			EnterGameEnd(currentPlayer);
 		End;
-		{ Redraw the selection to red }
-		If Not leaving Then
+	End;
+	CheckEnd := result;
+End;
+
+Procedure GameSelection();
+Begin
+	If gameBoard[boxSelected.X][boxSelected.Y] = 0 Then
+	Begin
+		DrawBoxContent(boxSelected.X, boxSelected.Y, currentPlayer);
+		If Not CheckEnd(gameBoard, boxSelected, currentPlayer) Then
 		Begin
+			{ Redraw the selection to red }
 			i := boxSelected.X;
 			If boxSelected.X = 0 Then
 				boxSelected.X := 1
@@ -318,28 +338,242 @@ Begin
 	boxSelected.Y := 0;
 	currentPlayer := 1;
 	SetConsoleSize(Width * BoxWidth, Height * BoxHeight);
+	ClrScr();
 	DrawBoard(gameBoard);
 	GameChangeSelection(0, 0);
+End;
+
+Procedure GameEndEvent(Const event: KEY_EVENT_RECORD);
+Begin
+	EnterMainMenu();
+End;
+
+Procedure GameEndEvent(Const event: MOUSE_EVENT_RECORD);
+Begin
+	If (event.dwButtonState = 0) And (event.dwEventFlags = 0) Then
+		EnterMainMenu();
+End;
+
+Procedure EnterGameEnd(Const player: Integer);
+Var
+i: Integer;
+result: Char;
+configFile: Text;
+s: String;
+Begin
+	If player = 0 Then
+	Begin
+		result := ' ';
+		Inc(draw);
+	End
+	Else If player = -1 Then
+	Begin
+		result := 'X';
+		Inc(lose);
+	End
+	Else
+	Begin
+		result := 'O';
+		Inc(win);
+	End;
+	Assign(configFile, '.tic-tac-toe');
+	Reset(configFile);
+	ReadLn(configFile);
+	ReadLn(configFile, s);
+	Close(configFile);
+	Rewrite(configFile);
+	WriteLn(configFile, Chr(win Div 256) + Chr(win Mod 256) + Chr(draw Div 256) + Chr(draw Mod 256) + Chr(lose Div 256) + Chr(lose Mod 256));
+	Write(configFile, s);
+	Close(configFile);
+	onKey := @GameEndEvent;
+	onMouse := @GameEndEvent;
+	onWinBufferSize := @Noop;
+	onFocus := @Noop;
+	onMenu := @Noop;
+	TextBackground(Black);
+	TextColor(White);
+	SetConsoleSize(Width * BoxWidth + 30, Height * BoxHeight);
+	For i := 0 To Height * BoxHeight - 1 Do
+		WriteDupAttr(Width * BoxWidth, i, 30);
+	GoToXY(Width * BoxWidth + 1, 0);
+	If result = ' ' Then
+	Begin
+		Write('The game ends in a draw.');
+		Str(win, s);
+		GoToXY(Width * BoxWidth + 1, 1);
+		Write('O wins: ' + s);
+		Str(draw, s);
+		GoToXY(Width * BoxWidth + 1, 2);
+		Write('Draw: ' + s);
+		Str(lose, s);
+		GoToXY(Width * BoxWidth + 1, 3);
+		Write('X wins: ' + s);
+	End
+	Else
+	Begin
+		Write('Congratulations!');
+		GoToXY(Width * BoxWidth + 1, 1);
+		Write('Player ' + result + ' wins!');
+		Str(win, s);
+		GoToXY(Width * BoxWidth + 1, 2);
+		Write('O wins: ', s);
+		Str(draw, s);
+		GoToXY(Width * BoxWidth + 1, 3);
+		Write('Draw: ', s);
+		Str(lose, s);
+		GoToXY(Width * BoxWidth + 1, 4);
+		Write('X wins: ', s);
+	End;
+End;
+
+Procedure ConfigSelection(Const result: Integer);
+Var
+filename: String;
+Width: Integer;
+Height: Integer;
+RequiredRow: Integer;
+c: Char;
+Begin
+	TextBackground(Black);
+	TextColor(White);
+	ClrScr();
+	onKey := @Noop;
+	onMouse := @Noop;
+	onWinBufferSize := @Noop;
+	onFocus := @Noop;
+	onMenu := @Noop;
+	Case result Of
+		0: Begin
+			CursorOn();
+			GoToXY(0, 2);
+			Write('Build-in config: tic-tac-toe, gomoku');
+			GoToXY(0, 0);
+			Write('Enter the name of config: ');
+			Read(filename);
+			If filename = '' Then
+				Read(filename);
+			If Not FileExists('config\' + filename) Then
+			Begin
+				GoToXY(0, 1);
+				Write('The config file does not exist.');
+				CursorOff();
+				Sleep(2000);
+				EnterMainMenu();
+			End
+			Else
+			Begin
+				LoadConfig(filename);
+				ClrScr();
+				Write('Loaded the config file successfully.');
+				CursorOff();
+				Sleep(2000);
+				EnterMainMenu();
+			End;
+		End;
+		1: Begin
+			CursorOn();
+			Write('Enter the name of config: ');
+			Read(filename);
+			If filename = '' Then
+				Read(filename);
+			GoToXY(0, 1);
+			Write('Enter the width of the board: ');
+			Read(Width);
+			GoToXY(0, 2);
+			Write('Enter the height of the board: ');
+			Read(Height);
+			GoToXY(0, 3);
+			Write('Enter the required ply in a row to win: ');
+			Read(RequiredRow);
+			GoToXY(0, 4);
+			WriteLn('Filename: ''' + filename + ''', Width: ', Width, ', Height: ', Height, ', Required ply in a row: ', RequiredRow);
+			Write('Type ''Y'' to confirm write or ''N'' to cancel: ');
+			Repeat
+				Read(c);
+			Until (UpCase(c) = 'Y') Or (UpCase(c) = 'N');
+			GoToXY(0, 6);
+			CursorOff();
+			If UpCase(c) <> 'Y' Then
+			Begin
+				Write('Cancelled');
+				Sleep(2000);
+				EnterMainMenu();
+			End
+			Else
+			Begin
+				CreateConfig(filename, Width, Height, RequiredRow);
+				LoadConfig(filename);
+				Write('Created and loaded config successfully.');
+				Sleep(2000);
+				EnterMainMenu();
+			End;
+		End;
+		2: Begin
+			ResetGame();
+			Write('Done!');
+			Sleep(1000);
+			EnterMainMenu();
+		End;
+		3: EnterMainMenu();
+	End;
+End;
+
+Procedure EnterConfig();
+Begin
+	TextBackground(Black);
+	TextColor(White);
+	ClrScr();
+	WriteFileCenter('scenes\menu_title.txt');
+	EnterMenu(onKey, onMouse, @ConfigSelection, configOptions);
+	onWinBufferSize := @Noop;
+	onFocus := @Noop;
+	onMenu := @Noop;
+End;
+
+Procedure EnterStat();
+Var
+statFile: Text;
+s: String;
+Begin
+	onKey := @GameEndEvent;
+	onMouse := @GameEndEvent;
+	onWinBufferSize := @Noop;
+	onFocus := @Noop;
+	onMenu := @Noop;
+	TextBackground(Black);
+	TextColor(White);
+	SetConsoleSize(50, 20);
+	ClrScr();
+	Assign(statFile, 'scenes\stat.txt');
+	Reset(statFile);
+	While Not EOF(statFile) Do
+	Begin
+		ReadLn(statFile, s);
+		WriteLn(s);
+	End;
+	Close(statFile);
+	GoToXY(13, 15);
+	Write(win);
+	GoToXY(35, 15);
+	Write(lose);
+	GoToXY(18, 1);
+	Write('Total Game: ', win + draw + lose);
 End;
 
 Begin
 	InitConsole();
 	SetConsoleSize(WinWidth, 45);
 	ClrScr();
-	WriteFileCenter('scenes/splash.txt');
+	WriteFileCenter('scenes\splash.txt');
+	{ InitProgram reads file and it takes time }
+	InitProgram();
 	Sleep(3000);
-	menuOptions[1] := 'Play';
-	menuOptions[2] := 'Options';
-	menuOptions[3] := 'Exit';
-	Width := 19;
-	Height := 19;
-	RequiredRow := 5;
-	EnterMenu();
+	EnterMainMenu();
 	{ Infinite Event Loop }
 	While True Do
 	Begin
 		PollConsoleInput(irInBuf, 128, cNumRead);
-		For i := 0 To cNumRead Do
+		For i := 0 To cNumRead - 1 Do
 		Case irInBuf[i].EventType Of
 			KEY_EVENT: onKey(irInBuf[i].Event.KeyEvent);
 			2: onMouse(irInBuf[i].Event.MouseEvent);
