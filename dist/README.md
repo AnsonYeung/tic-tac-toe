@@ -1,7 +1,7 @@
 # Tic Tac Toe
 A console version of tic tac toe written in Pascal.  
 This program uses the event-driven design and it only supports Windows.  
-It is developed and tested under Windows 10.  
+Currently, it is developed and tested under Windows 10 only.  
 The repository of this program is [here](https://github.com/AnsonYeung/tic-tac-toe)
 
 ## Instructions
