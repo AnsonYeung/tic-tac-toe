@@ -40,6 +40,7 @@ Procedure WriteDup(Const X: Integer; Const Y: Integer; Const c: PChar; Const n: 
 Procedure WriteDupAttr(Const X: Integer; Const Y: Integer; Const n: Integer);
 Procedure CursorOff();
 Procedure CursorOn();
+Procedure FlushInput();
 Procedure RestoreConsole();
 
 Implementation
@@ -200,6 +201,11 @@ Begin
 	cursorInfo.bVisible := True;
 	cursorInfo.dwSize := 100;
 	SetConsoleCursorInfo(hStdout, cursorInfo);
+End;
+
+Procedure FlushInput();
+Begin
+	FlushConsoleInputBuffer(hStdin);
 End;
 
 Procedure RestoreConsole();

@@ -260,7 +260,7 @@ Begin
 					result := False;
 		If result Then
 		Begin
-			EnterGameEnd(currentPlayer);
+			EnterGameEnd(0);
 		End;
 	End;
 	CheckEnd := result;
@@ -360,6 +360,7 @@ i: Integer;
 result: Char;
 configFile: Text;
 s: String;
+c: Char;
 Begin
 	If player = 0 Then
 	Begin
@@ -378,7 +379,7 @@ Begin
 	End;
 	Assign(configFile, '.tic-tac-toe');
 	Reset(configFile);
-	ReadLn(configFile);
+	ReadLn(configFile, c, c, c, c, c, c);
 	ReadLn(configFile, s);
 	Close(configFile);
 	Rewrite(configFile);
@@ -442,6 +443,7 @@ Begin
 	onWinBufferSize := @Noop;
 	onFocus := @Noop;
 	onMenu := @Noop;
+	FlushInput();
 	Case result Of
 		0: Begin
 			CursorOn();
@@ -450,8 +452,6 @@ Begin
 			GoToXY(0, 0);
 			Write('Enter the name of config: ');
 			Read(filename);
-			If filename = '' Then
-				Read(filename);
 			If Not FileExists('config\' + filename) Then
 			Begin
 				GoToXY(0, 1);
@@ -474,8 +474,6 @@ Begin
 			CursorOn();
 			Write('Enter the name of config: ');
 			Read(filename);
-			If filename = '' Then
-				Read(filename);
 			GoToXY(0, 1);
 			Write('Enter the width of the board: ');
 			Read(Width);
