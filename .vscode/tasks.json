@@ -4,9 +4,9 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
-			"label": "echo",
+			"label": "Clean and build",
 			"type": "shell",
-			"command": "C: && cd \\Users\\secur\\GitHub\\tic-tac-toe\\src && rm -rf ..\\tmp && mkdir ..\\tmp && fpc -FU..\\tmp -o..\\bin\\tic-tac-toe.exe -dRELEASE tic-tac-toe.pas && rm -rf ..\\tmp && mkdir ..\\tmp && fpc -FU..\\tmp -o..\\bin\\tic-tac-toe_allow_menu.exe -dRELEASE -dFALLBACK tic-tac-toe.pas && rm -rf ..\\tmp",
+			"command": "C: && cd \\Users\\secur\\GitHub\\tic-tac-toe\\src && rm -rf ..\\bin\\config && rm ..\\bin\\*.exe && rm ..\\bin\\.tic-tac-toe && rm -rf ..\\tmp && mkdir ..\\tmp && fpc -FU..\\tmp -o..\\bin\\tic-tac-toe.exe -dRELEASE tic-tac-toe.pas && rm -rf ..\\tmp && mkdir ..\\tmp && fpc -FU..\\tmp -o..\\bin\\tic-tac-toe_allow_menu.exe -dRELEASE -dFALLBACK tic-tac-toe.pas && rm -rf ..\\tmp",
 			"group": {
 				"kind": "build",
 				"isDefault": true
