@@ -2,3 +2,5 @@
 *.o
 .tic-tac-toe
 config
+tmp
+*.exe

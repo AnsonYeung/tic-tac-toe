@@ -16,7 +16,7 @@
 	}, 
 	"settings": {
 		"code-runner.executorMap": {
-			"pascal": "C: && cd \\Users\\secur\\GitHub\\tic-tac-toe\\src && type nul >> temp.ppu && rm *.ppu && fpc -dDEBUG tic-tac-toe.pas && start tic-tac-toe"
+			"pascal": "C: && cd \\Users\\secur\\GitHub\\tic-tac-toe\\src && rm -rf ..\\tmp && mkdir ..\\tmp && fpc -FU..\\tmp -o..\\bin\\tic-tac-toe_debug.exe -dDEBUG tic-tac-toe.pas && rm -rf ..\\tmp && cd ..\\bin && start tic-tac-toe_debug"
 		},
 		"code-runner.saveAllFilesBeforeRun": true,
 		"code-runner.defaultLanguage": "pascal"
